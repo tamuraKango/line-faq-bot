@@ -1,36 +1,39 @@
 # CLAUDE.md
 
-このリポジトリで作業するときのルールです。作業を始める前に必ず読んでください。
-
 ## プロジェクト概要
+LINEで質問すると、WordPressに登録された社内FAQ記事をもとにClaudeが回答するbot。
+Claude API・LINE Messaging API・WordPress REST API を連携した、業務効率化の試作（デモ）。
 
-机の上の物（カップ・スマホ・本）をカメラで数える画像認識Webアプリ。
-AI案件の全工程（要件定義 → PoC → 評価 → 追加学習 → 組み込み → 振り返り）を小規模で体験する練習プロジェクト。
+詳細な仕様は **必ず `docs/design.md` を読んでから** 作業すること。
 
-**設計書は `docs/design.md`。仕様・タスク・進捗はすべてそこが正です。**
+## 技術スタック
+- NestJS（TypeScript）/ Node.js LTS
+- `@line/bot-sdk`（LINE Messaging API）
+- `@anthropic-ai/sdk`（Claude API、モデルは環境変数 `ANTHROPIC_MODEL`）
+- WordPress（Docker Compose でローカル起動）
+- ngrok（開発中に Webhook を公開するため）
 
-## 作業の進め方
+## 開発環境
+- Windows 11 / Docker Desktop（WSL2）
+- コマンドは PowerShell でも動く形を優先する（`&&` 連結や bash 専用構文に依存しない）
 
-1. `docs/design.md` を読み、「タスク一覧」から**未完了で、担当が Claude のタスクを1つだけ**選ぶ
-2. 着手前に、何をどう変えるかの計画を示して、ユーザーの承認を得る
-3. タスクごとにブランチを切る：`feature/T<番号>-<短い英語名>`（例：`feature/T04-readme`）
-4. 実装する。タスクの範囲外のファイルは変更しない
-5. タスクの「完了条件」をすべて満たしたか自分で確認する
-6. `docs/design.md` の該当タスクのチェックを `[x]` にし、作業ログに1行追記する
-7. コミットして push する。PR はユーザーが GitHub 上で作成する（`gh` コマンドが使える場合は作成してよい）
+## よく使うコマンド
+- `npm run start:dev` … 開発サーバー起動（ポート 3000）
+- `npm run test` … ユニットテスト
+- `npm run test:e2e` … e2e テスト
+- `docker compose up -d` … WordPress 起動（http://localhost:8080）
+- `ngrok http 3000` … Webhook 公開用
 
-## ルール
+## 進め方のルール
+- `docs/design.md` の「フェーズ」単位で進める。1フェーズ = 1ブランチ = 1PR
+- ブランチ名は `feature/<フェーズ名>`（例：`feature/echo-bot`）
+- 着手前に「やることの計画」を箇条書きで示し、承認を待ってから実装する
+- 1フェーズが終わったら、動作確認の手順と結果を報告する
+- コミットは小さく。Conventional Commits 形式（`feat:` `fix:` `docs:` など）、本文は日本語でよい
 
-- 返答・コミットメッセージ・コードコメントは日本語
-- コミットメッセージは `種類: 内容` の形式（種類は feat / fix / docs / refactor / chore）
-- main ブランチに直接コミットしない
-- 設計書と食い違う指示や、判断に迷う点があれば、実装前に質問する
-- ユーザーは学習中。変更したら「何を・なぜ変えたか」を短く説明する
-- 秘密情報（APIキー等）をコミットしない
-
-## 環境
-
-- Windows 11 / PowerShell / VS Code
-- ローカル確認：VS Code の Live Server、またはプロジェクト直下で `npx serve`
-- 公開：Vercel（main へのマージで本番、PR ごとにプレビューURL）
-- PC に NVIDIA GPU はない。重い学習処理は Google Colab で行う
+## 守ること
+- `.env` は絶対にコミットしない。変数を追加したら `.env.example` も更新する
+- APIキー・トークン・チャネルシークレットをコード、ログ、コミット、PR本文に含めない
+- LINE の署名検証は省略しない
+- ライブラリの API は、インストールされているバージョンの型定義・公式ドキュメントで確認してから使う（記憶に頼らない）
+- 設計書と違う実装をしたくなったら、先に理由を説明して相談する
