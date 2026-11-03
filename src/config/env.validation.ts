@@ -2,9 +2,12 @@
 export interface Env {
   LINE_CHANNEL_SECRET: string;
   LINE_CHANNEL_ACCESS_TOKEN: string;
+  WP_BASE_URL: string;
   PORT: number;
   NODE_ENV: string;
 }
+
+const DEFAULT_WP_BASE_URL = 'http://localhost:8080';
 
 const REQUIRED_KEYS = [
   'LINE_CHANNEL_SECRET',
@@ -25,9 +28,21 @@ export function validateEnv(config: Record<string, unknown>): Env {
     throw new Error('環境変数 PORT は正の整数で指定してください');
   }
 
+  const wpBaseUrl =
+    typeof config.WP_BASE_URL === 'string' && config.WP_BASE_URL !== ''
+      ? config.WP_BASE_URL
+      : DEFAULT_WP_BASE_URL;
+  if (!/^https?:\/\/[^/]/.test(wpBaseUrl) || !URL.canParse(wpBaseUrl)) {
+    throw new Error(
+      '環境変数 WP_BASE_URL は http:// か https:// で始まる URL で指定してください',
+    );
+  }
+
   return {
     LINE_CHANNEL_SECRET: config.LINE_CHANNEL_SECRET as string,
     LINE_CHANNEL_ACCESS_TOKEN: config.LINE_CHANNEL_ACCESS_TOKEN as string,
+    // 末尾の / は外し、後ろにパスをつなげやすくする
+    WP_BASE_URL: wpBaseUrl.replace(/\/+$/, ''),
     PORT: port,
     // 未設定のときは本番扱いにして、質問本文をログに出さない
     NODE_ENV:
