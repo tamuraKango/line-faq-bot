@@ -2,7 +2,7 @@ import { createHmac } from 'node:crypto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { App } from 'supertest/types';
+import type { App } from 'supertest/types.js';
 import { messagingApi } from '@line/bot-sdk';
 import { AppModule } from './../src/app.module.js';
 
