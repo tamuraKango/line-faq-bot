@@ -1,0 +1,15 @@
+# 改行コードをリポジトリ内では LF に統一する（autocrlf による警告と差分を防ぐ）
+* text=auto eol=lf
+
+# Windows 用スクリプトは CRLF のままにする
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# バイナリファイルは変換しない
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mp4 binary
