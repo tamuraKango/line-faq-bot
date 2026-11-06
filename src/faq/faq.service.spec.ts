@@ -1,4 +1,5 @@
-import type { AiService } from '../ai/ai.service.js';
+import { Logger } from '@nestjs/common';
+import { NOT_FOUND_ANSWER, type AiService } from '../ai/ai.service.js';
 import type {
   FaqArticle,
   WordpressService,
@@ -20,6 +21,20 @@ describe('FaqService', () => {
 
     await expect(service.answer('質問')).resolves.toBe('回答');
     expect(ai.answer).toHaveBeenCalledWith('質問', ARTICLES);
+  });
+
+  it('記事が1件もなければ、Claude を呼ばずに「見つかりませんでした」を返す', async () => {
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
+    const wordpress = { getArticles: vi.fn().mockResolvedValue([]) };
+    const ai = { answer: vi.fn() };
+    const service = new FaqService(
+      wordpress as unknown as WordpressService,
+      ai as unknown as AiService,
+    );
+
+    await expect(service.answer('質問')).resolves.toBe(NOT_FOUND_ANSWER);
+    expect(ai.answer).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
   });
 
   it('記事の取得に失敗したら、Claude は呼ばずに例外にする', async () => {
