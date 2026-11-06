@@ -11,6 +11,7 @@ export default defineConfig({
     env: {
       LINE_CHANNEL_SECRET: 'test-channel-secret',
       LINE_CHANNEL_ACCESS_TOKEN: 'test-access-token',
+      ANTHROPIC_API_KEY: 'test-anthropic-api-key',
     },
   },
 });

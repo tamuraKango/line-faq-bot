@@ -2,16 +2,20 @@
 export interface Env {
   LINE_CHANNEL_SECRET: string;
   LINE_CHANNEL_ACCESS_TOKEN: string;
+  ANTHROPIC_API_KEY: string;
+  ANTHROPIC_MODEL: string;
   WP_BASE_URL: string;
   PORT: number;
   NODE_ENV: string;
 }
 
+const DEFAULT_ANTHROPIC_MODEL = 'claude-haiku-5-5';
 const DEFAULT_WP_BASE_URL = 'http://localhost:8080';
 
 const REQUIRED_KEYS = [
   'LINE_CHANNEL_SECRET',
   'LINE_CHANNEL_ACCESS_TOKEN',
+  'ANTHROPIC_API_KEY',
 ] as const;
 
 export function validateEnv(config: Record<string, unknown>): Env {
@@ -41,6 +45,12 @@ export function validateEnv(config: Record<string, unknown>): Env {
   return {
     LINE_CHANNEL_SECRET: config.LINE_CHANNEL_SECRET as string,
     LINE_CHANNEL_ACCESS_TOKEN: config.LINE_CHANNEL_ACCESS_TOKEN as string,
+    ANTHROPIC_API_KEY: config.ANTHROPIC_API_KEY as string,
+    ANTHROPIC_MODEL:
+      typeof config.ANTHROPIC_MODEL === 'string' &&
+      config.ANTHROPIC_MODEL !== ''
+        ? config.ANTHROPIC_MODEL
+        : DEFAULT_ANTHROPIC_MODEL,
     // 末尾の / は外し、後ろにパスをつなげやすくする
     WP_BASE_URL: wpBaseUrl.replace(/\/+$/, ''),
     PORT: port,
