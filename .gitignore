@@ -5,3 +5,4 @@ dist/
 *.tsbuildinfo
 coverage/
 wordpress/seed/faq-import.xml
+wordpress/seed/faq-import.zip
