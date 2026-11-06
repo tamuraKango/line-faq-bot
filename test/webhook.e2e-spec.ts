@@ -5,6 +5,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { messagingApi } from '@line/bot-sdk';
 import { AppModule } from './../src/app.module.js';
+import { FaqService } from './../src/faq/faq.service.js';
 
 // vitest.config.e2e.ts の env で渡したテスト用の値
 const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!;
@@ -34,12 +35,17 @@ function messageEvent(message: Record<string, unknown>): string {
 describe('POST /webhook (e2e)', () => {
   let app: INestApplication<App>;
   let replyMessage: ReturnType<typeof vi.spyOn>;
+  let faqAnswer: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     // 実際の LINE には送らない
     replyMessage = vi
       .spyOn(messagingApi.MessagingApiClient.prototype, 'replyMessage')
       .mockResolvedValue({ sentMessages: [] });
+    // WordPress と Claude も呼ばない
+    faqAnswer = vi
+      .spyOn(FaqService.prototype, 'answer')
+      .mockResolvedValue('月額5万円までです。\n参照：交通費の上限');
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -84,8 +90,12 @@ describe('POST /webhook (e2e)', () => {
       .expect(200);
   });
 
-  it('テキストはそのまま返す', async () => {
-    const body = messageEvent({ type: 'text', id: '1', text: 'こんにちは' });
+  it('テキストの質問には FAQ の回答を返す', async () => {
+    const body = messageEvent({
+      type: 'text',
+      id: '1',
+      text: '交通費っていくらまで出る？',
+    });
     await request(app.getHttpServer())
       .post('/webhook')
       .set('Content-Type', 'application/json')
@@ -95,7 +105,32 @@ describe('POST /webhook (e2e)', () => {
     await vi.waitFor(() =>
       expect(replyMessage).toHaveBeenCalledWith({
         replyToken: 'test-reply-token',
-        messages: [{ type: 'text', text: 'こんにちは' }],
+        messages: [
+          { type: 'text', text: '月額5万円までです。\n参照：交通費の上限' },
+        ],
+      }),
+    );
+    expect(faqAnswer).toHaveBeenCalledWith('交通費っていくらまで出る？');
+  });
+
+  it('回答を作れなかったら、時間をおいて試すよう返す', async () => {
+    faqAnswer.mockRejectedValueOnce(new Error('WordPress に接続できません'));
+    const body = messageEvent({ type: 'text', id: '1', text: '質問' });
+    await request(app.getHttpServer())
+      .post('/webhook')
+      .set('Content-Type', 'application/json')
+      .set('x-line-signature', sign(body))
+      .send(body)
+      .expect(200);
+    await vi.waitFor(() =>
+      expect(replyMessage).toHaveBeenCalledWith({
+        replyToken: 'test-reply-token',
+        messages: [
+          {
+            type: 'text',
+            text: 'ただいま回答できません。時間をおいてお試しください',
+          },
+        ],
       }),
     );
   });
@@ -119,5 +154,6 @@ describe('POST /webhook (e2e)', () => {
         messages: [{ type: 'text', text: '文章で質問してください' }],
       }),
     );
+    expect(faqAnswer).not.toHaveBeenCalled();
   });
 });
