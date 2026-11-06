@@ -22,7 +22,7 @@ describe('WordpressService', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const config = {
-      get: () => 'http://wp.test',
+      get: () => 'http://wp.test/wp-json/wp/v2',
     } as unknown as ConfigService<Env, true>;
     service = new WordpressService(config);
   });
