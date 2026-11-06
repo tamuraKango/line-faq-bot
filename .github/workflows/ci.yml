@@ -1,0 +1,28 @@
+# PR と main への push で、lint・型チェック・テストを実行する
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - name: Type check
+        run: npx tsc --noEmit -p tsconfig.json
+      - run: npm run build
+      - run: npm run test
+      # e2e テストの環境変数は vitest.config.e2e.ts でテスト用の値を渡している
+      - run: npm run test:e2e
