@@ -9,9 +9,23 @@ describe('validateEnv', () => {
   it('必須の値がそろっていれば、既定値を補って返す', () => {
     expect(validateEnv(base)).toEqual({
       ...base,
+      WP_BASE_URL: 'http://localhost:8080',
       PORT: 3000,
       NODE_ENV: 'production',
     });
+  });
+
+  it('WP_BASE_URL の末尾の / を外す', () => {
+    expect(
+      validateEnv({ ...base, WP_BASE_URL: 'https://wp.example.com/' })
+        .WP_BASE_URL,
+    ).toBe('https://wp.example.com');
+  });
+
+  it('WP_BASE_URL が URL でなければエラーにする', () => {
+    expect(() =>
+      validateEnv({ ...base, WP_BASE_URL: 'localhost:8080' }),
+    ).toThrow('WP_BASE_URL');
   });
 
   it('PORT を数値に変換する', () => {

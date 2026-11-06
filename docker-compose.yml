@@ -1,0 +1,54 @@
+# ローカル開発用の WordPress（社内FAQのデータベース役）
+# パスワード類は .env から読む（.env.example を参照）
+services:
+  db:
+    image: mysql:8.4.13
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: ${WP_DB_PASSWORD:?.env に WP_DB_PASSWORD を設定してください}
+      MYSQL_ROOT_PASSWORD: ${WP_DB_ROOT_PASSWORD:?.env に WP_DB_ROOT_PASSWORD を設定してください}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      # 初期化中の一時サーバーは TCP を受け付けないので、本起動するまで unhealthy のまま
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '--silent']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  wordpress:
+    image: wordpress:7.1.4-php8.4-apache
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '8080:80'
+    environment: &wp-db-env
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: ${WP_DB_PASSWORD:?.env に WP_DB_PASSWORD を設定してください}
+    volumes:
+      - wp_data:/var/www/html
+
+  # サンプル記事の投入用。普段は起動せず、npm run seed から使う
+  wpcli:
+    image: wordpress:cli-2.12.0-php8.4
+    profiles: ['tools']
+    depends_on:
+      - wordpress
+    # wordpress コンテナの www-data（uid 33）に合わせ、作ったファイルを本体側でも書き換えられるようにする
+    user: '33:33'
+    environment:
+      <<: *wp-db-env
+      HOME: /tmp
+      WP_ADMIN_PASSWORD: ${WP_ADMIN_PASSWORD:?.env に WP_ADMIN_PASSWORD を設定してください}
+    volumes:
+      - wp_data:/var/www/html
+      - ./wordpress/seed:/seed:ro
+    command: ['sh', '/seed/seed.sh']
+
+volumes:
+  db_data:
+  wp_data:
