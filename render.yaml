@@ -1,0 +1,28 @@
+# Render の Blueprint。bot を無料プランで動かす（WordPress は WordPress.com を使う）
+# 無料プランは15分アクセスがないと停止するので、デモの前に URL を開いて起こしておく
+services:
+  - type: web
+    name: line-faq-bot
+    runtime: node
+    plan: free
+    region: singapore
+    # nest build に devDependencies が必要なので、明示的に入れる
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_MODEL
+        value: claude-haiku-5-5
+      # 以下は Blueprint の作成時に、Render の画面で入力する（ファイルには書かない）
+      - key: LINE_CHANNEL_SECRET
+        sync: false
+      - key: LINE_CHANNEL_ACCESS_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # 例: https://public-api.wordpress.com/wp/v2/sites/<サイト名>.wordpress.com
+      - key: WP_API_URL
+        sync: false
