@@ -11,7 +11,7 @@ describe('validateEnv', () => {
     expect(validateEnv(base)).toEqual({
       ...base,
       ANTHROPIC_MODEL: 'claude-haiku-5-5',
-      WP_BASE_URL: 'http://localhost:8080',
+      WP_API_URL: 'http://localhost:8080/wp-json/wp/v2',
       PORT: 3000,
       NODE_ENV: 'production',
     });
@@ -24,11 +24,28 @@ describe('validateEnv', () => {
     ).toBe('claude-sonnet-5-5');
   });
 
-  it('WP_BASE_URL の末尾の / を外す', () => {
+  it('WP_BASE_URL から REST API の URL を作る（末尾の / は外す）', () => {
     expect(
       validateEnv({ ...base, WP_BASE_URL: 'https://wp.example.com/' })
-        .WP_BASE_URL,
-    ).toBe('https://wp.example.com');
+        .WP_API_URL,
+    ).toBe('https://wp.example.com/wp-json/wp/v2');
+  });
+
+  it('WP_API_URL を指定すれば、WP_BASE_URL より優先する', () => {
+    expect(
+      validateEnv({
+        ...base,
+        WP_BASE_URL: 'https://wp.example.com',
+        WP_API_URL:
+          'https://public-api.wordpress.com/wp/v2/sites/sample.wordpress.com/',
+      }).WP_API_URL,
+    ).toBe('https://public-api.wordpress.com/wp/v2/sites/sample.wordpress.com');
+  });
+
+  it('WP_API_URL が URL でなければエラーにする', () => {
+    expect(() => validateEnv({ ...base, WP_API_URL: 'sample' })).toThrow(
+      'WP_API_URL',
+    );
   });
 
   it('WP_BASE_URL が URL でなければエラーにする', () => {

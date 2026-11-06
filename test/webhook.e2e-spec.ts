@@ -64,6 +64,10 @@ describe('POST /webhook (e2e)', () => {
     await app.close();
   });
 
+  it('GET / は ok を返す（稼働確認と、デモ前に起こすため）', async () => {
+    await request(app.getHttpServer()).get('/').expect(200).expect('ok');
+  });
+
   it('署名ヘッダーがなければ 401', async () => {
     await request(app.getHttpServer())
       .post('/webhook')

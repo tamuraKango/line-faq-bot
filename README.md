@@ -108,12 +108,61 @@ npm run start:dev
 ngrok http 3000
 ```
 
-LINE Developers の「Messaging API設定」で、次のように設定します。
+LINE Developers の「Messaging API設定」で、次のように設定します（Webhook URL は `npm run line:webhook -- https://<ngrok のドメイン>/webhook` でも設定できます）。
 
 - Webhook URL：`https://<ngrok のドメイン>/webhook`
 - 「Webhookの利用」：オン
 
 LINE Official Account Manager の「応答設定」で、「応答メッセージ」はオフにします。
+
+## デプロイ（無料）
+
+bot は [Render](https://render.com/) の無料プラン、WordPress は [WordPress.com](https://wordpress.com/) の無料プランで動かしています。
+
+```mermaid
+flowchart LR
+    LINE[LINE Platform] -->|Webhook| R[Render<br>bot]
+    R -->|REST API| W[WordPress.com<br>FAQ記事]
+    R -->|Messages API| C[Claude API]
+```
+
+> **無料プランの注意**：Render の無料プランは、15分アクセスがないと停止し、次のアクセスで起動するまで1分ほどかかります。止まっているときに送った最初のメッセージには、返事が来ないことがあります。**デモの前に、ブラウザで bot の URL を開いて起こしておいてください**（`ok` と表示されれば起きています）。
+
+### 1. WordPress.com に FAQ 記事を入れる
+
+1. WordPress.com で無料のサイトを作る（ドメインは「Skip」して `〜.wordpress.com` を使う）
+2. インポート用のファイルを作る
+
+   ```powershell
+   npm run seed:wxr
+   ```
+
+3. 管理画面の「Tools」→「Import」→「WordPress」で、`wordpress/seed/faq-import.xml` を読み込む
+
+記事は `https://public-api.wordpress.com/wp/v2/sites/<サイト名>.wordpress.com` から読みます。
+
+### 2. Render に bot を作る
+
+1. Render の「New」→「Blueprint」で、このリポジトリを選ぶ（設定は [render.yaml](render.yaml)）
+2. 次の値を入力して作成する
+
+   | 変数名 | 内容 |
+   |---|---|
+   | `LINE_CHANNEL_SECRET` / `LINE_CHANNEL_ACCESS_TOKEN` / `ANTHROPIC_API_KEY` | `.env` と同じ値 |
+   | `WP_API_URL` | `https://public-api.wordpress.com/wp/v2/sites/<サイト名>.wordpress.com` |
+
+3. `main` に push すると、自動で再デプロイされます
+
+### 3. LINE の Webhook URL を切り替える
+
+```powershell
+# Render で動かすとき
+npm run line:webhook -- https://<Render のドメイン>/webhook
+# 手元で開発するとき（ngrok を起動してから）
+npm run line:webhook -- https://<ngrok のドメイン>/webhook
+```
+
+Webhook URL を切り替えて、LINE からの接続テストまで行います。
 
 ## テスト
 

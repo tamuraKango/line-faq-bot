@@ -27,8 +27,8 @@ export class WordpressService {
   private cache?: { articles: FaqArticle[]; expiresAt: number };
 
   constructor(config: ConfigService<Env, true>) {
-    const baseUrl = config.get('WP_BASE_URL', { infer: true });
-    this.postsUrl = `${baseUrl}/wp-json/wp/v2/posts?per_page=100&_fields=id,title,content,link`;
+    const apiUrl = config.get('WP_API_URL', { infer: true });
+    this.postsUrl = `${apiUrl}/posts?per_page=100&_fields=id,title,content,link`;
   }
 
   // 記事の数が少ない前提で全件を返す。取得結果は5分間使い回す

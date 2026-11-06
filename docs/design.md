@@ -86,6 +86,7 @@ src/
 | `ANTHROPIC_API_KEY` | Claude API キー |
 | `ANTHROPIC_MODEL` | 使用モデル（既定：`claude-haiku-5-5`） |
 | `WP_BASE_URL` | WordPress の URL（既定：`http://localhost:8080`） |
+| `WP_API_URL` | REST API の `wp/v2` までの URL。WordPress.com のように API の場所がサイトの URL と違うときだけ指定し、`WP_BASE_URL` より優先する |
 | `PORT` | bot のポート（既定：3000） |
 
 ## 9. エラー処理とログ
@@ -123,8 +124,12 @@ src/
 ### Phase 4：仕上げ（`feature/polish`）
 - エラー処理、テスト、README（構成図・手順・デモ GIF）
 
-### Phase 5（任意）：デプロイ
-- Railway などに bot と WordPress を置き、ngrok なしで動くようにする
+### Phase 5（任意）：デプロイ（`feature/deploy`）
+- bot と WordPress をクラウドに置き、ngrok なしで動くようにする
+- 費用をかけないため、bot は Render の無料プラン、WordPress は WordPress.com の無料プランを使う（Railway は常時稼働で月8ドル前後かかるため見送った）
+  - Render の無料プランは15分アクセスがないと停止し、起動に1分ほどかかる。デモの前にブラウザで bot の URL（`GET /`）を開いて起こしておく
+  - WordPress.com の無料プランでは WP-CLI が使えないため、サンプル記事はインポート用ファイル（WXR）を作って管理画面から読み込む
+- LINE の Webhook URL は `npm run line:webhook -- <URL>` で、Render と手元の ngrok を切り替える
 
 ## 12. 発展案（面談で話せるネタ）
 - 回答できなかった質問を Google スプレッドシートに記録し、FAQ 追加の候補にする（Google 連携）
