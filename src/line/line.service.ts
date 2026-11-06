@@ -4,8 +4,27 @@ import { messagingApi, validateSignature, webhook } from '@line/bot-sdk';
 import type { Env } from '../config/env.validation.js';
 import { FaqService } from '../faq/faq.service.js';
 
-const NON_TEXT_REPLY = '文章で質問してください';
-const UNAVAILABLE_REPLY = 'ただいま回答できません。時間をおいてお試しください';
+export const NON_TEXT_REPLY = '文章で質問してください';
+export const UNAVAILABLE_REPLY =
+  'ただいま回答できません。時間をおいてお試しください';
+
+// LINE のテキストメッセージは5000文字まで
+export const MAX_TEXT_LENGTH = 5000;
+// 回答が届くと自動で消えるので、Claude と WordPress のタイムアウトより長めにする
+const LOADING_SECONDS = 45;
+
+export function truncateForLine(text: string): string {
+  // 絵文字などのサロゲートペアを途中で切らないように、コードポイント単位で数える
+  const chars = Array.from(text);
+  return chars.length <= MAX_TEXT_LENGTH
+    ? text
+    : `${chars.slice(0, MAX_TEXT_LENGTH - 1).join('')}…`;
+}
+
+// エラーオブジェクト全体はリクエスト情報を含みうるので、メッセージだけをログに出す
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 @Injectable()
 export class LineService {
@@ -43,21 +62,34 @@ export class LineService {
       return;
     }
 
-    const message = event.message;
-    const replyText =
-      message.type === 'text'
-        ? await this.answer(message.text)
-        : NON_TEXT_REPLY;
+    let replyText = NON_TEXT_REPLY;
+    if (event.message.type === 'text') {
+      // 回答を作っている数秒のあいだ、トーク画面に「入力中」を出す（1対1のトークのみ）
+      if (event.source?.type === 'user' && event.source.userId) {
+        void this.showLoading(event.source.userId);
+      }
+      replyText = await this.answer(event.message.text);
+    }
 
     try {
       await this.client.replyMessage({
         replyToken: event.replyToken,
-        messages: [{ type: 'text', text: replyText }],
+        messages: [{ type: 'text', text: truncateForLine(replyText) }],
       });
     } catch (error) {
-      // エラーオブジェクト全体はリクエスト情報を含みうるので、メッセージだけを出す
-      const reason = error instanceof Error ? error.message : String(error);
-      this.logger.error(`返信に失敗しました: ${reason}`);
+      this.logger.error(`返信に失敗しました: ${errorMessage(error)}`);
+    }
+  }
+
+  // 表示に失敗しても回答には影響しないので、警告を出すだけにする
+  private async showLoading(userId: string): Promise<void> {
+    try {
+      await this.client.showLoadingAnimation({
+        chatId: userId,
+        loadingSeconds: LOADING_SECONDS,
+      });
+    } catch (error) {
+      this.logger.warn(`入力中の表示に失敗しました: ${errorMessage(error)}`);
     }
   }
 
@@ -69,8 +101,7 @@ export class LineService {
     try {
       return await this.faq.answer(question);
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      this.logger.error(`回答の作成に失敗しました: ${reason}`);
+      this.logger.error(`回答の作成に失敗しました: ${errorMessage(error)}`);
       return UNAVAILABLE_REPLY;
     }
   }

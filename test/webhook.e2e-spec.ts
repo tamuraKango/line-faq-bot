@@ -42,6 +42,10 @@ describe('POST /webhook (e2e)', () => {
     replyMessage = vi
       .spyOn(messagingApi.MessagingApiClient.prototype, 'replyMessage')
       .mockResolvedValue({ sentMessages: [] });
+    vi.spyOn(
+      messagingApi.MessagingApiClient.prototype,
+      'showLoadingAnimation',
+    ).mockResolvedValue({});
     // WordPress と Claude も呼ばない
     faqAnswer = vi
       .spyOn(FaqService.prototype, 'answer')
