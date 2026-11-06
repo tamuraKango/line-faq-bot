@@ -20,7 +20,9 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-    "seed": "docker compose run --rm wpcli"
+    "seed": "docker compose run --rm wpcli",
+    "seed:wxr": "node wordpress/seed/build-wxr.mjs",
+    "line:webhook": "node --env-file=.env scripts/set-line-webhook.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
