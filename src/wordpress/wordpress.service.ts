@@ -38,9 +38,21 @@ export class WordpressService {
       return this.cache.articles;
     }
 
-    const response = await fetch(this.postsUrl, {
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
+    let response: Response;
+    try {
+      response = await fetch(this.postsUrl, {
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (error) {
+      const timedOut =
+        error instanceof DOMException && error.name === 'TimeoutError';
+      throw new Error(
+        timedOut
+          ? `WordPress の応答がありません（${REQUEST_TIMEOUT_MS / 1000}秒でタイムアウト）`
+          : `WordPress に接続できません（${this.postsUrl}）。docker compose up -d で起動しているか確認してください`,
+        { cause: error },
+      );
+    }
     if (!response.ok) {
       throw new Error(
         `WordPress から記事を取得できませんでした（HTTP ${response.status}）`,

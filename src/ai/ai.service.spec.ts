@@ -1,5 +1,5 @@
 import type { ConfigService } from '@nestjs/config';
-import type Anthropic from '@anthropic-ai/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import type { Env } from '../config/env.validation.js';
 import type { FaqArticle } from '../wordpress/wordpress.service.js';
 import {
@@ -7,6 +7,7 @@ import {
   NOT_FOUND_ANSWER,
   REFUSAL_ANSWER,
   buildSystemPrompt,
+  describeClaudeError,
 } from './ai.service.js';
 
 const ARTICLES: FaqArticle[] = [
@@ -106,5 +107,60 @@ describe('AiService', () => {
     await expect(service.answer('質問', ARTICLES)).rejects.toThrow(
       'stop_reason: max_tokens',
     );
+  });
+
+  it('API のエラーは、原因がわかるメッセージの例外にする', async () => {
+    create.mockRejectedValueOnce(
+      new Anthropic.AuthenticationError(
+        401,
+        undefined,
+        'invalid x-api-key',
+        new Headers(),
+      ),
+    );
+    await expect(service.answer('質問', ARTICLES)).rejects.toThrow(
+      'Claude API キーが無効です（401）',
+    );
+  });
+});
+
+describe('describeClaudeError', () => {
+  const headers = new Headers();
+
+  it.each([
+    [
+      new Anthropic.APIConnectionTimeoutError(),
+      'Claude API がタイムアウトしました',
+    ],
+    [
+      new Anthropic.APIConnectionError({ message: 'ECONNRESET' }),
+      'Claude API に接続できません',
+    ],
+    [
+      new Anthropic.RateLimitError(429, undefined, 'rate limit', headers),
+      '利用上限に達しました（429）',
+    ],
+    [
+      new Anthropic.OverloadedError(529, undefined, 'overloaded', headers),
+      '混雑しています（529）',
+    ],
+  ])('%s', (error, expected) => {
+    expect(describeClaudeError(error)).toContain(expected);
+  });
+
+  it('そのほかの API エラーは、ステータスと API のメッセージを含める', () => {
+    const error = new Anthropic.BadRequestError(
+      400,
+      undefined,
+      'Your credit balance is too low',
+      headers,
+    );
+    expect(describeClaudeError(error)).toMatch(
+      /^Claude API でエラーが発生しました（400）: .*credit balance is too low/,
+    );
+  });
+
+  it('API 以外のエラーはメッセージをそのまま返す', () => {
+    expect(describeClaudeError(new Error('想定外'))).toBe('想定外');
   });
 });

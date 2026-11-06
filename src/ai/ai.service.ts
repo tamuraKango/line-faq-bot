@@ -17,6 +17,30 @@ const SYSTEM_PROMPT_HEADER = `あなたはサンプル株式会社の社内FAQ�
 - 回答は300字以内で、LINE で読みやすいように短い文で書いてください。LINE では Markdown が表示されないので、** や # などの記号は使わないでください。
 - 回答の最後に、改行して「参照：記事タイトル」を付けてください。複数の記事を使った場合は「参照：タイトル1、タイトル2」としてください。該当する情報がなかった場合は付けないでください。`;
 
+// Claude API のエラーを、原因がわかる1行にする。キーなどの秘密情報は含まれない
+export function describeClaudeError(error: unknown): string {
+  if (error instanceof Anthropic.APIConnectionTimeoutError) {
+    return 'Claude API がタイムアウトしました';
+  }
+  if (error instanceof Anthropic.APIConnectionError) {
+    return 'Claude API に接続できません';
+  }
+  if (error instanceof Anthropic.AuthenticationError) {
+    return 'Claude API キーが無効です（401）。.env の ANTHROPIC_API_KEY を確認してください';
+  }
+  if (error instanceof Anthropic.RateLimitError) {
+    return 'Claude API の利用上限に達しました（429）。時間をおいて再試行してください';
+  }
+  if (error instanceof Anthropic.OverloadedError) {
+    return 'Claude API が混雑しています（529）';
+  }
+  // クレジット不足などは 400 で返り、理由は API のメッセージに書かれている
+  if (error instanceof Anthropic.APIError) {
+    return `Claude API でエラーが発生しました（${error.status}）: ${error.message}`;
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 function escapeAttribute(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -50,14 +74,19 @@ export class AiService {
   }
 
   async answer(question: string, articles: FaqArticle[]): Promise<string> {
-    const response = await this.client.messages.create({
-      model: this.model,
-      max_tokens: 16000,
-      // 短い Q&A なので、思考を浅くして速さと料金を抑える
-      output_config: { effort: 'low' },
-      system: buildSystemPrompt(articles),
-      messages: [{ role: 'user', content: question }],
-    });
+    let response: Anthropic.Message;
+    try {
+      response = await this.client.messages.create({
+        model: this.model,
+        max_tokens: 16000,
+        // 短い Q&A なので、思考を浅くして速さと料金を抑える
+        output_config: { effort: 'low' },
+        system: buildSystemPrompt(articles),
+        messages: [{ role: 'user', content: question }],
+      });
+    } catch (error) {
+      throw new Error(describeClaudeError(error), { cause: error });
+    }
 
     if (response.stop_reason === 'refusal') {
       return REFUSAL_ANSWER;

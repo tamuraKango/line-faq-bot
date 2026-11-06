@@ -58,6 +58,22 @@ describe('WordpressService', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('接続できなければ、起動を確認するよう案内する例外にする', async () => {
+    fetchMock.mockImplementationOnce(() =>
+      Promise.reject(new TypeError('fetch failed')),
+    );
+    await expect(service.getArticles()).rejects.toThrow(
+      'WordPress に接続できません',
+    );
+  });
+
+  it('タイムアウトしたら、そのことがわかる例外にする', async () => {
+    fetchMock.mockImplementationOnce(() =>
+      Promise.reject(new DOMException('timed out', 'TimeoutError')),
+    );
+    await expect(service.getArticles()).rejects.toThrow('タイムアウト');
+  });
+
   it('HTTP エラーなら例外にし、キャッシュしない', async () => {
     fetchMock.mockImplementationOnce(() =>
       Promise.resolve(new Response('error', { status: 500 })),
